@@ -1,0 +1,89 @@
+package com.bankapp.controller;
+
+import com.bankapp.model.Account;
+import com.bankapp.model.Client;
+import com.bankapp.repository.ClientRepository;
+import com.bankapp.util.SessionManager;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/transactions")
+public class TransactionController {
+    private final SessionManager sessionManager;
+    private Client recipientClient;
+    private Account recipientAccount;
+
+    public TransactionController(SessionManager sessionManager) {
+        this.sessionManager = sessionManager;
+    }
+
+    // 1️⃣ Получить список всех клиентов перед переводом
+    @GetMapping("/clients")
+    public List<Client> getAllClients() {
+        return List.copyOf(ClientRepository.getAllClients());
+    }
+
+    // 2️⃣ Выбрать получателя перевода по телефону и номеру счета
+    @PostMapping("/select-recipient")
+    public String selectRecipient(@RequestParam String username, @RequestParam String accountNumber) {
+        RestTemplate template= new RestTemplate();
+        Client res=template.getForEntity("http://localhost:8081/isLogged",Client.class).getBody();
+        if (res.equals("не аутентифицирован")) {
+            return "❌ Ошибка: Сначала войдите в систему!";
+        }
+        if (!res.equals("аутентифицирован")) {
+            return "❌ Ошибка: попробуйте попозже";
+        }
+        Optional<Client> recipientOpt = ClientRepository.findByUsername(username);
+        if (recipientOpt.isEmpty()) {
+            return "❌ Ошибка: Получатель не найден!";
+        }
+
+        Optional<Account> recipientAccountOpt = recipientOpt.get().getAccounts()
+                .stream()
+                .filter(a -> a.getAccountNumber().equals(accountNumber))
+                .findFirst();
+
+        if (recipientAccountOpt.isEmpty()) {
+            return "❌ Ошибка: У получателя нет такого счета!";
+        }
+
+        this.recipientClient = recipientOpt.get();
+        this.recipientAccount = recipientAccountOpt.get();
+
+        return "✅ Получатель выбран: " + recipientClient.getFullName() + " (Счет: " + recipientAccount.getAccountNumber() + ")";
+    }
+
+    // 3️⃣ Выполнить перевод (указать сумму и изменить баланс)
+    @PostMapping("/transfer")
+    public String transfer(@RequestParam double amount) {
+        if (!sessionManager.isLoggedIn()) {
+            return "❌ Ошибка: Сначала войдите в систему!";
+        }
+        if (recipientClient == null || recipientAccount == null) {
+            return "❌ Ошибка: Сначала выберите получателя!";
+        }
+
+        Client sender = sessionManager.getLoggedInClient();
+        Optional<Account> senderAccountOpt = sender.getAccounts().stream().findFirst();
+        if (senderAccountOpt.isEmpty()) {
+            return "❌ Ошибка: У вас нет счета!";
+        }
+
+        Account senderAccount = senderAccountOpt.get();
+
+        if (senderAccount.getBalance() < amount) {
+            return "❌ Ошибка: Недостаточно средств на счете!";
+        }
+
+        // Обновляем балансы
+        senderAccount.setBalance(senderAccount.getBalance() - amount);
+        recipientAccount.setBalance(recipientAccount.getBalance() + amount);
+
+        return "✅ Перевод завершен! " + amount + "₽ переведено на счет " + recipientAccount.getAccountNumber();
+    }
+}
