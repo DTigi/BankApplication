@@ -60,4 +60,15 @@ public class AuthController {
         sessionManager.logout();
         return "✅ Успешный выход";
     }
+
+    @GetMapping("/current")
+    public ResponseEntity<?> getCurrentClient() {
+        Client client = sessionManager.getLoggedInClient();
+        if (client == null) {
+            return ResponseEntity.status(401).body("не аутентифицирован");
+        }
+//        System.out.println(client);
+        return ResponseEntity.ok(client);
+    }
+
 }
