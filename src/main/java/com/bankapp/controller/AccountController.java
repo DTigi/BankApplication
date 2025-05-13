@@ -2,6 +2,7 @@ package com.bankapp.controller;
 
 import com.bankapp.model.Account;
 import com.bankapp.service.AccountService;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -13,6 +14,8 @@ public class AccountController {
         this.accountService = accountService;
     }
 
+    @Operation(summary = "Создать аккаунт",
+            description = "Создать аккаунт")
     @PostMapping("/create")
     public Account create(@RequestParam String clientId) {
         return accountService.createAccount(clientId);

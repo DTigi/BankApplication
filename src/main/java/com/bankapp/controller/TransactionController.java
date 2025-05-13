@@ -4,6 +4,7 @@ import com.bankapp.model.Account;
 import com.bankapp.model.Client;
 import com.bankapp.repository.ClientRepository;
 import com.bankapp.util.SessionManager;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
@@ -24,18 +25,21 @@ public class TransactionController {
     }
 
     // 1️⃣ Получить список всех клиентов перед переводом
+    @Operation(summary = "Список клиентов",
+            description = "Выводит список всех клиентов перед переводом")
     @GetMapping("/clients")
     public List<Client> getAllClients() {
         return List.copyOf(ClientRepository.getAllClients());
     }
 
-    // 2️⃣ Выбрать получателя перевода по телефону и номеру счета
+    // 2️⃣ Выбрать получателя перевода по имени и номеру счета
+    @Operation(summary = "Выбор получателя перевода",
+            description = "Выбрать получателя перевода по телефону и номеру счета")
     @PostMapping("/select-recipient")
     public String selectRecipient(@RequestParam String username, @RequestParam String accountNumber) {
         RestTemplate template = new RestTemplate();
         try {
-            // Для удобства AuthController временно работает в одном и том же приложении с другими контроллерами на том же порту 8080
-            String response = template.getForEntity("http://localhost:8080/auth/current", String.class).getBody();
+            String response = template.getForEntity("http://localhost:8081/auth/current", String.class).getBody();
 //            System.out.println(response);
 
             Optional<Client> recipientOpt = ClientRepository.findByUsername(username);
@@ -63,6 +67,8 @@ public class TransactionController {
     }
 
     // 3️⃣ Выполнить перевод (указать сумму и изменить баланс)
+    @Operation(summary = "Выполнить перевод",
+            description = "Выполнить перевод (указать сумму и изменить баланс)")
     @PostMapping("/transfer")
     public String transfer(@RequestParam double amount) {
         RestTemplate template = new RestTemplate();
