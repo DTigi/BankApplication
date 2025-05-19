@@ -15,6 +15,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Optional;
+import jakarta.annotation.PostConstruct;
 
 @RestController
 @RequestMapping("/transactions")
@@ -22,19 +23,23 @@ public class TransactionController {
 
     private final SessionManager sessionManager;
 
-    private final MeterRegistry meterRegistry;
-    private final Counter transferCounter;
-    private final DistributionSummary amountSummary;
-    private final Timer transferTimer;
+    @Autowired
+    private MeterRegistry meterRegistry;
+
+    private Counter transferCounter;
+    private DistributionSummary amountSummary;
+    private Timer transferTimer;
 
     private Client recipientClient;
     private Account recipientAccount;
 
-    @Autowired
-    public TransactionController(SessionManager sessionManager, MeterRegistry meterRegistry) {
-        this.sessionManager = sessionManager;
-        this.meterRegistry = meterRegistry;
 
+    public TransactionController(SessionManager sessionManager) {
+        this.sessionManager = sessionManager;
+    }
+
+    @PostConstruct
+    private void initMetrics() {
         // Метрики
         this.transferCounter = meterRegistry.counter("transactions.count");
         this.amountSummary = DistributionSummary.builder("transactions.amounts")
