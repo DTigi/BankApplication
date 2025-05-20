@@ -27,8 +27,8 @@ public class AuthController {
     private MeterRegistry meterRegistry;
 
     private final AtomicInteger userCount = new AtomicInteger(0);
-    private Counter loginCounter;
-    private Timer loginTimer;
+    private Counter loginCounter, logoutCounter;
+    private Timer loginTimer, logoutTimer;
     private DistributionSummary passwordLengthSummary;
 
     private Integer currentTimeout = 10;  // Дефолтное значение таймаута
@@ -45,9 +45,17 @@ public class AuthController {
                 .description("Счётчик успешных входов")
                 .register(meterRegistry);
 
+        this.logoutCounter = Counter.builder("auth.logout.count")
+                .description("Счётчик успешных выходов")
+                .register(meterRegistry);
+
         // Timer
         this.loginTimer = Timer.builder("auth.login.timer")
                 .description("Время выполнения логина")
+                .register(meterRegistry);
+
+        this.logoutTimer = Timer.builder("auth.logout.timer")
+                .description("Время выполнения логаута")
                 .register(meterRegistry);
 
         // DistributionSummary
@@ -106,9 +114,12 @@ public class AuthController {
     @Operation(summary = "Выход из системы", description = "Выполняет выход пользователя из системы")
     @PostMapping("/logout")
     public String logout() {
-        sessionManager.logout();
-        userCount.decrementAndGet();
-        return "✅ Успешный выход";
+        return logoutTimer.record(() -> {
+            logoutCounter.increment();
+            sessionManager.logout();
+            userCount.decrementAndGet();
+            return "✅ Успешный выход";
+        });
     }
 
     @Observed(name = "auth.current", contextualName = "auth#current", lowCardinalityKeyValues = {"endpoint", "current"})

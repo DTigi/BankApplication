@@ -26,10 +26,6 @@ public class TransactionController {
     private DistributionSummary amountSummary;
     private Timer transferTimer;
 
-    // Удаляем эти поля, так как теперь используем сессию
-    // private Client recipientClient;
-    // private Account recipientAccount;
-
     public TransactionController(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
     }
