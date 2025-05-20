@@ -22,9 +22,9 @@ public class TransactionController {
     @Autowired
     private MeterRegistry meterRegistry;
 
-    private Counter transferCounter;
+    private Counter transferCounter, select_recipientCounter;
     private DistributionSummary amountSummary;
-    private Timer transferTimer;
+    private Timer transferTimer, select_recipientTimer;
 
     public TransactionController(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
@@ -34,12 +34,16 @@ public class TransactionController {
     private void initMetrics() {
         // Метрики
         this.transferCounter = meterRegistry.counter("transactions.count");
+        this.select_recipientCounter = meterRegistry.counter("select_recipient.count");
         this.amountSummary = DistributionSummary.builder("transactions.amounts")
                 .baseUnit("rubles")
                 .description("Суммы переводов")
                 .register(meterRegistry);
         this.transferTimer = Timer.builder("transactions.transfer.time")
                 .description("Время выполнения перевода")
+                .register(meterRegistry);
+        this.select_recipientTimer = Timer.builder("select.recipient.time")
+                .description("Время выбора получателя")
                 .register(meterRegistry);
 
         Gauge.builder("transactions.clients.total", () -> ClientRepository.getAllClients().size())
@@ -58,6 +62,9 @@ public class TransactionController {
     @PostMapping("/select-recipient")
     @Observed(name = "transactions.selectRecipient")
     public String selectRecipient(@RequestParam String username, @RequestParam String accountNumber) {
+        return select_recipientTimer.record(() -> {
+            select_recipientCounter.increment();
+
         Client sender = sessionManager.getLoggedInClient();
         if (sender == null) {
             return "❌ Ошибка: Сначала войдите в систему!";
@@ -92,6 +99,7 @@ public class TransactionController {
         return "✅ Получатель выбран: " + recipientOpt.get().getFullName() +
                 " (Счет: " + recipientAccountOpt.get().getAccountNumber() + ")\n" +
                 "Баланс отправителя: " + senderAccount.getBalance();
+        });
     }
 
     @PostMapping("/transfer")
@@ -123,7 +131,7 @@ public class TransactionController {
             }
 
             // Обновляем балансы
-//            senderAccount.setBalance(senderAccount.getBalance() - amount);
+            senderAccount.setBalance(senderAccount.getBalance() - amount);
             recipientAccount.setBalance(recipientAccount.getBalance() + amount);
 
             // Очищаем данные получателя после успешного перевода

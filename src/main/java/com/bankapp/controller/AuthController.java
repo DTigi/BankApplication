@@ -27,8 +27,8 @@ public class AuthController {
     private MeterRegistry meterRegistry;
 
     private final AtomicInteger userCount = new AtomicInteger(0);
-    private Counter loginCounter, logoutCounter;
-    private Timer loginTimer, logoutTimer;
+    private Counter loginCounter, logoutCounter, registerCounter;
+    private Timer loginTimer, logoutTimer, registerTimer;
     private DistributionSummary passwordLengthSummary;
 
     private Integer currentTimeout = 10;  // Дефолтное значение таймаута
@@ -49,6 +49,10 @@ public class AuthController {
                 .description("Счётчик успешных выходов")
                 .register(meterRegistry);
 
+        this.registerCounter = Counter.builder("auth.register.count")
+                .description("Счётчик успешных регистраций")
+                .register(meterRegistry);
+
         // Timer
         this.loginTimer = Timer.builder("auth.login.timer")
                 .description("Время выполнения логина")
@@ -56,6 +60,10 @@ public class AuthController {
 
         this.logoutTimer = Timer.builder("auth.logout.timer")
                 .description("Время выполнения логаута")
+                .register(meterRegistry);
+
+        this.registerTimer = Timer.builder("auth.register.timer")
+                .description("Время выполнения регистрации")
                 .register(meterRegistry);
 
         // DistributionSummary
@@ -75,7 +83,10 @@ public class AuthController {
     @PostMapping("/register")
     public Client register(@RequestParam String fullName, @RequestParam String phone,
                            @RequestParam String username, @RequestParam String password) {
-        return clientService.register(fullName, phone, username, password);
+        return registerTimer.record(() -> {
+            registerCounter.increment();
+            return clientService.register(fullName, phone, username, password);
+        });
     }
 
     @Observed(name = "auth.set-timeout", contextualName = "auth#setTimeout", lowCardinalityKeyValues = {"endpoint", "setTimeout"})
