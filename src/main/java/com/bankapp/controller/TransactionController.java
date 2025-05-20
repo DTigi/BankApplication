@@ -68,7 +68,15 @@ public class TransactionController {
     public String selectRecipient(@RequestParam String username, @RequestParam String accountNumber) {
         RestTemplate template = new RestTemplate();
         try {
-            String response = template.getForEntity("http://localhost:8081/auth/current", String.class).getBody();
+            ResponseEntity<Client> response = template.getForEntity("http://localhost:8081/auth/current", Client.class);
+            Client sender = response.getBody();
+            Optional<Account> senderAccountOpt = sender.getAccounts().stream().findFirst();
+            if (senderAccountOpt.isEmpty()) {
+                return "❌ Ошибка: У отправителя нет счета!";
+            }
+
+            Account senderAccount = senderAccountOpt.get();
+
 
             Optional<Client> recipientOpt = ClientRepository.findByUsername(username);
             if (recipientOpt.isEmpty()) {
@@ -88,7 +96,8 @@ public class TransactionController {
             this.recipientAccount = recipientAccountOpt.get();
 
             return "✅ Получатель выбран: " + recipientClient.getFullName() +
-                    " (Счет: " + recipientAccount.getAccountNumber() + ")";
+                    " (Счет: " + recipientAccount.getAccountNumber() + ")\n" +
+                    "Баланс отправителя: " + senderAccount.getBalance();
         } catch (Exception e) {
             return "❌ Ошибка: Сначала войдите в систему!";
         }
