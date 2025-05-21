@@ -126,7 +126,6 @@ public class AuthController {
     @PostMapping("/logout")
     public String logout() {
         return logoutTimer.record(() -> {
-            logoutCounter.increment();
             sessionManager.logout();
             userCount.decrementAndGet();
             return "✅ Успешный выход";
