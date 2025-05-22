@@ -41,9 +41,13 @@ public class TransactionController {
                 .register(meterRegistry);
         this.transferTimer = Timer.builder("transactions.transfer.time")
                 .description("Время выполнения перевода")
+                .publishPercentiles(0.9)
+                .publishPercentileHistogram()
                 .register(meterRegistry);
         this.select_recipientTimer = Timer.builder("select.recipient.time")
                 .description("Время выбора получателя")
+                .publishPercentiles(0.9)
+                .publishPercentileHistogram()
                 .register(meterRegistry);
 
         Gauge.builder("transactions.clients.total", () -> ClientRepository.getAllClients().size())

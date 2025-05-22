@@ -56,14 +56,20 @@ public class AuthController {
         // Timer
         this.loginTimer = Timer.builder("auth.login.timer")
                 .description("Время выполнения логина")
+                .publishPercentiles(0.9)
+                .publishPercentileHistogram()
                 .register(meterRegistry);
 
         this.logoutTimer = Timer.builder("auth.logout.timer")
                 .description("Время выполнения логаута")
+                .publishPercentiles(0.9)
+                .publishPercentileHistogram()
                 .register(meterRegistry);
 
         this.registerTimer = Timer.builder("auth.register.timer")
                 .description("Время выполнения регистрации")
+                .publishPercentiles(0.9)
+                .publishPercentileHistogram()
                 .register(meterRegistry);
 
         // DistributionSummary
